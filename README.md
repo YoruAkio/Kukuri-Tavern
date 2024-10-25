@@ -41,7 +41,7 @@ There's few rules of contributing:
 
 ### Credits to this people
 - [RebillionXX](https://github.com/RebillionXX) for the source based : [GrowServer](https://github.com/RebillionXX/GrowtopiaServer)
-- [YoruAkio](https://github.com/YoruAkio) for helping me about Login System
+- [YoruAkio](https://github.com/YoruAkio) and [ZTzTopia](https://github.com/ZTzTopia) for helping me about Login System
 
 ### Our discord server
 [Join our discord](https://discord.gg/pqymdG3pBa)
