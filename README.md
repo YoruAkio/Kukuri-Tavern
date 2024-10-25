@@ -1,4 +1,4 @@
-# Kukuri Tavern
+# Kukuri Server
 > A Growtopia Private Server made in C++, well-structured and reliable code.
 
 ### Known Issue
