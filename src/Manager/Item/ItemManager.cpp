@@ -15,6 +15,8 @@ bool ItemManager::Serialize() {
     if (!itemData.data() || itemData.empty())
         return false;
 
+    m_itemsDatHash = 0x55555555;
+
     BinaryReader br(itemData.data());
     m_version = br.Read<uint16_t>();
     m_itemCount = br.Read<uint32_t>();
@@ -31,6 +33,9 @@ bool ItemManager::Serialize() {
     Logger::Print(eLoggerType::INFO, "{} >> Serialized items.dat with {} items loaded.", fmt::format(fmt::emphasis::bold | fg(fmt::color::cornsilk), "ItemManager"), this->GetItemsLoaded());
     return true;
 }
+uint32_t ItemManager::GetItemsDatHash() const {
+    return m_itemsDatHash;
+}
 void ItemManager::Encode() {
     std::size_t alloc = 6;
     for (ItemInfo* item : m_items)
@@ -44,6 +49,7 @@ void ItemManager::Encode() {
 
     FileManager::WriteAsBytes("cache/items.dat", reinterpret_cast<char*>(buffer.Get()), buffer.GetPosition());
 }
+
 void ItemManager::Kill() {
     for (auto& item : m_items) {
         if (!item)
