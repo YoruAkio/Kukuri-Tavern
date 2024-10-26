@@ -6,6 +6,9 @@
 #include <Event/EventPool.hpp>
 #include <Packet/PacketFactory.hpp>
 #include <Utils/Utils.hpp>
+#include <Packet/VariantFunction.hpp>
+#include <Manager/Item/ItemManager.hpp>
+#include <fmt/format.h>
 
 ServerPool g_serverPool;
 ServerPool* GetServerPool() {
@@ -73,62 +76,6 @@ size_t ServerPool::GetActiveWorlds() const {
     return ret;
 }
 
-/*
-void ServerPool::ServicePoll() {
-    while (this->IsRunning()) {
-    for (auto& [instanceId, pServer] : this->GetServers()) {
-        while (enet_host_check_events(pServer->GetHost(), pServer->GetEvent())) {
-            auto event = *pServer->GetEvent();
-            auto playerPool = pServer->GetPlayerPool();
-            if (!event.peer || !playerPool)
-                break;
-
-            if (!event.peer) {
-                Logger::Print(INFO, "Null peer detected");
-                break;
-            }
-
-            switch (event.type) {
-            case ENET_EVENT_TYPE_CONNECT: {
-                Logger::Print(INFO, "New connection attempt from {}", event.peer->address.host);
-                if (playerPool->GetPlayer(event.peer->connectID))
-                    break;
-                Player* pAvatar = playerPool->NewPlayer(event.peer);
-                pAvatar->OnConnect();
-            } break;
-            case ENET_EVENT_TYPE_DISCONNECT: {
-                Player* pAvatar = playerPool->GetPlayer(event.peer->connectID);
-                if (!pAvatar)
-                    break;
-                pAvatar->OnDisconnect();
-                playerPool->RemovePlayer(event.peer->connectID);
-            } break;
-            case ENET_EVENT_TYPE_RECEIVE: {
-                Player* pAvatar = playerPool->GetPlayer(event.peer->connectID);
-                if (event.packet->dataLength < sizeof(IPacketType::m_packetType) + 1 || event.packet->dataLength > 0x400 || !pAvatar) {
-                    enet_packet_destroy(event.packet);
-                    break;
-                }
-                auto messageType = *(int32_t*)event.packet->data;
-                switch (messageType) {
-                case NET_MESSAGE_GENERIC_TEXT:
-                case NET_MESSAGE_GAME_MESSAGE: {
-                    auto data = this->DataToString(event.packet->data + sizeof(IPacketType::m_packetType), event.packet->dataLength - sizeof(IPacketType::m_packetType));
-                    GetEventPool()->AddQueue(data.substr(0, data.find('|')), pAvatar, pServer, data, TextParse(data), nullptr);
-                } break;
-                default:
-                    break;
-                }
-            } break;
-            default:
-                break;
-            }
-        }
-        enet_host_service(pServer->GetHost(), nullptr, 1);
-    }
-    }
-}
-*/
 void ServerPool::ServicePoll() {
     while (this->IsRunning()) {
         for (auto& [instanceId, pServer] : this->GetServers()) {
@@ -189,15 +136,12 @@ void ServerPool::ServicePoll() {
                                 );
 
                                 if (data.find("protocol|") != std::string::npos) {
-                                    Logger::Print(DEBUG, "Processed text message: {}", data);
+                                    Logger::Print(DEBUG, "Received protocol message, sending OnSuperMain");
+                                    VarList::OnSuperMainStartAcceptLogon(event.peer, GetItemManager()->GetItemsDatHash());
 
                                     pServer->GetWorldPool()->SendToWorldSelect(pAvatar);
 
-                                    /*TextParse dialogData;
-                                    dialogData.Add("delayMS", "1000");
-                                    pAvatar->PlayerDialog::Send(DIALOG_TYPE_REGISTRATION, dialogData);
-
-                                    Logger::Print(DEBUG, "Sent world select and registration dialog");*/
+                                    Logger::Print(DEBUG, "Processed text message: {}", data);
                                 }
                                 else {
                                     GetEventPool()->AddQueue(
@@ -208,6 +152,16 @@ void ServerPool::ServicePoll() {
                                         TextParse(data),
                                         nullptr
                                     );
+                                }
+                            } break;
+                            case NET_MESSAGE_GAME_PACKET: {
+                                Logger::Print(INFO, "Received packet type: Game Packet");
+                                auto* tankPacket = this->DataToTankPacket(
+                                    event.packet->data + sizeof(IPacketType::m_packetType),
+                                    event.packet->dataLength - sizeof(IPacketType::m_packetType)
+                                );
+                                if (tankPacket) {
+                                    Logger::Print(DEBUG, "Processing tank packet type: {}", static_cast<int>(tankPacket->m_type));
                                 }
                             } break;
                             default:
