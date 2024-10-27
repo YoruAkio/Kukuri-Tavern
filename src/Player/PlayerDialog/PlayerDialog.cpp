@@ -37,7 +37,7 @@ void PlayerDialog::Send(eDialogTypes eType, TextParse data) {
             ->AddSpacer()
             ->EndDialog("growid_apply", "Cancel", "`wGet a GrowID``");
 
-        Logger::Print(DEBUG, "Dialog content: {}", db.Get());
+        Logger::Print(INFO, "Dialog content: {}", db.Get());
     } break;
     default:
         break;

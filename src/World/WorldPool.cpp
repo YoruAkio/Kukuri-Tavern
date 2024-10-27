@@ -1,4 +1,4 @@
-#include <World/WorldPool.hpp>
+﻿#include <World/WorldPool.hpp>
 #include <Logger/Logger.hpp>
 #include <Packet/VariantFunction.hpp>
 
@@ -37,33 +37,35 @@ std::shared_ptr<World> WorldPool::GetWorld(std::string vName) {
 void WorldPool::SendToWorldSelect(Player* pPlayer) {
     if (!pPlayer) return;
 
-    // welcome message
+    // Welc msg
     VarList::OnConsoleMessage((ENetPeer*)pPlayer,
         fmt::format("Welcome {} Where would you like to go?", pPlayer->GetRawName()));
 
-    // create World Select menu
-    std::string menuText = "add_heading|Top Worlds|\n";
-    menuText += "add_floater|START|0|0.5|3529161471\n";
-    menuText += "add_floater|START1|0|0.5|3529161471\n";
-    menuText += "add_floater|START2|0|0.5|3529161471\n";
+    // create World Select Menu with correct format
+    std::string menuText = "default\n";
+    menuText.append("add_filter|0|0|\n");
+    menuText.append("\nadd_spacer|small|\n");
+    menuText.append("add_label|big|`wTop Worlds``|left|\n");
+    menuText.append("\nadd_spacer|small|\n");
+    menuText.append("add_button|START||staticBlueFrame|0|\n");
+    menuText.append("add_button|EXIT||staticBlueFrame|0|\n");
 
     // active worlds
     for (const auto& [name, world] : m_worlds) {
-        if (world) {
-            size_t playerCount = world->GetPlayerCount();
-            if (playerCount > 0) {
-                menuText += fmt::format("add_floater|{} ({})|0|0.5|3529161471\n",
-                    name, playerCount);
-            }
+        if (world && world->GetPlayerCount() > 0) {
+            menuText += fmt::format("add_button|{}||staticBlueFrame|{}|\n",
+                name,
+                world->GetPlayerCount()
+            );
         }
     }
 
-    // send World Select menu
+    // send World Select Menu
     auto vList = VariantList::Create("OnRequestWorldSelectMenu");
     vList.Insert(menuText);
     ENetWrapper::SendVariantList((ENetPeer*)pPlayer, vList);
 
-    // gazette dialog
+    // Gazette dialog
     DialogBuilder db;
     db.SetDefaultColor('o')
         ->AddLabelWithIcon("`wThe Server Gazette``", 5016, LEFT, BIG)
@@ -73,7 +75,6 @@ void WorldPool::SendToWorldSelect(Player* pPlayer) {
         ->AddQuickExit()
         ->EndDialog("gazzette_end", "Cancel", "`wGet a GrowID``");
 
-    // send Gazette dialog with delay
     auto dialogVList = VariantList::Create("OnDialogRequest", 100);
     dialogVList.Insert(db.Get());
     ENetWrapper::SendVariantList((ENetPeer*)pPlayer, dialogVList);

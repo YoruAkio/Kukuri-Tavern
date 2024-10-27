@@ -101,11 +101,11 @@ bool InitializeServer() {
     }
 
     // Initialize Item Manager
-    if (!GetItemManager()->Serialize()) {
+    /*if (!GetItemManager()->Serialize()) {
         Logger::Print(EXCEPTION, "{} >> failed to load items.dat, please make sure the file is on /cache",
             fmt::format(fmt::emphasis::bold | fg(fmt::color::cornsilk), "ItemManager"));
         return false;
-    }
+    }*/
 
     // Initialize Event Pool
     Logger::Print(INFO, "Initializing {} and registering events...",

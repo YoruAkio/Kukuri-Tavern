@@ -1,4 +1,4 @@
-#include <Server/ServerPool.hpp>
+﻿#include <Server/ServerPool.hpp>
 #include <magic_enum.hpp>
 #include <ENetWrapper/ENetServer.hpp>
 #include <config.hpp>
@@ -134,14 +134,14 @@ void ServerPool::ServicePoll() {
                                     event.packet->data + sizeof(IPacketType::m_packetType),
                                     event.packet->dataLength - sizeof(IPacketType::m_packetType)
                                 );
+                                Logger::Print(DEBUG, "Got message: {}", data);
 
                                 if (data.find("protocol|") != std::string::npos) {
-                                    Logger::Print(DEBUG, "Received protocol message, sending OnSuperMain");
+                                    Logger::Print(DEBUG, "Received protocol message from guest");
+
+                                    // Send OnSuperMain
                                     VarList::OnSuperMainStartAcceptLogon(event.peer, GetItemManager()->GetItemsDatHash());
-
-                                    pServer->GetWorldPool()->SendToWorldSelect(pAvatar);
-
-                                    Logger::Print(DEBUG, "Processed text message: {}", data);
+                                    Logger::Print(DEBUG, "Sent OnSuperMain");
                                 }
                                 else {
                                     GetEventPool()->AddQueue(
@@ -152,6 +152,7 @@ void ServerPool::ServicePoll() {
                                         TextParse(data),
                                         nullptr
                                     );
+                                    Logger::Print(DEBUG, "Processed text message: {}", data);
                                 }
                             } break;
                             case NET_MESSAGE_GAME_PACKET: {

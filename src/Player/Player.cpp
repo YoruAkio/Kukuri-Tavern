@@ -2,6 +2,8 @@
 #include <ENetWrapper/ENetWrapper.hpp>
 #include <Packet/PacketFactory.hpp>
 #include <Logger/Logger.hpp>
+#include <Packet/VariantFunction.hpp>
+#include <Manager/Item/ItemManager.hpp>
 
 Player::Player(ENetPeer* peer) : Peer(peer),
     PlayerDialog(peer),
@@ -51,7 +53,6 @@ void Player::OnConnect() {
     auto packet = SLoginInformationRequestPacket();
     ENetWrapper::SendPacket(this->Get(), packet);
 
-    Logger::Print(INFO, "Sent OSM {}.", GetItemManager()->GetItemsDatHash());
     VarList::OnSuperMainStartAcceptLogon((ENetPeer*)this, GetItemManager()->GetItemsDatHash());
 }
 void Player::OnDisconnect() {

@@ -1,4 +1,4 @@
-#include <Manager/Database/Database.hpp>
+﻿#include <Manager/Database/Database.hpp>
 #include <Manager/Database/DatabaseInitializer.hpp>
 #include <config.hpp>
 #include <sqlpp11/sqlite3/connection.h> 

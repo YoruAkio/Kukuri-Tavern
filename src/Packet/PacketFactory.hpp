@@ -12,14 +12,14 @@ public:
 
 class ISPacket : public IPacketType {
 public:
-    std::vector<uint8_t>    m_packetData    = {};
-    std::size_t             m_packetLength  = 0;
+    std::vector<uint8_t>    m_packetData = {};
+    std::size_t             m_packetLength = 0;
 };
 
 class STankPacket : public ISPacket {
 public:
-    STankPacket(TankPacketData tankData) : m_tankData(std::move(tankData)) { 
-        m_packetType = NET_MESSAGE_GAME_PACKET; 
+    STankPacket(TankPacketData tankData) : m_tankData(std::move(tankData)) {
+        m_packetType = NET_MESSAGE_GAME_PACKET;
         this->Pack();
     }
 
@@ -35,7 +35,7 @@ public:
 
 protected:
     TankPacketData m_tankData;
-    
+
 public:
     std::vector<uint8_t> m_data;
 };
@@ -61,6 +61,21 @@ public:
 
 private:
     VariantList m_vList;
+};
+
+// SUpdateItemsPacket
+class SUpdateItemsPacket : public STankPacket {
+public:
+    SUpdateItemsPacket(std::vector<uint8_t> data) : STankPacket(TankPacketData()) {
+        m_tankData.m_type = NET_GAME_PACKET_SEND_ITEM_DATABASE_DATA;
+        m_tankData.m_flags.bExtended = true;
+        m_tankData.m_netId = -1;
+        m_tankData.m_dataLength = data.size();
+
+        m_data.reserve(m_tankData.m_dataLength);
+        std::memcpy(m_data.data(), data.data(), m_tankData.m_dataLength);
+        STankPacket::Pack();
+    }
 };
 
 /*

@@ -14,6 +14,7 @@ public:
     uint32_t GetItemsDatHash() const;
 
     std::vector<ItemInfo*> GetItems();
+    std::vector<uint8_t> GetItemsData(); 
     size_t GetItemsLoaded();
 
 public:
@@ -24,6 +25,7 @@ private:
     uint16_t m_version;
     uint32_t m_itemCount;
     uint32_t m_itemsDatHash;
+    std::vector<uint8_t> m_itemData;   
 
     std::vector<ItemInfo*> m_items;
 };

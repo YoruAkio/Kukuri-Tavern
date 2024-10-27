@@ -2,6 +2,7 @@
 #include <Logger/Logger.hpp>
 #include <Utils/BinaryReader.hpp>
 #include <Utils/FileManager.hpp>
+#include <Utils/Utils.hpp>
 
 ItemManager g_itemManager;
 ItemManager* GetItemManager() {
@@ -11,13 +12,14 @@ ItemManager* GetItemManager() {
 bool ItemManager::Serialize() {
     if (!std::filesystem::exists("cache/items.dat"))
         return false;
-    auto itemData = FileManager::ReadAsByteArray("cache/items.dat");
-    if (!itemData.data() || itemData.empty())
+    m_itemData = FileManager::ReadAsByteArray("cache/items.dat");  // from auto itemData to m_itemData
+    if (!m_itemData.data() || m_itemData.empty())
         return false;
 
-    m_itemsDatHash = 0x55555555;
+    //m_itemsDatHash = 0x55555555;
+    m_itemsDatHash = Hash::RTHash(m_itemData.data(), m_itemData.size());
 
-    BinaryReader br(itemData.data());
+    BinaryReader br(m_itemData.data());
     m_version = br.Read<uint16_t>();
     m_itemCount = br.Read<uint32_t>();
 
@@ -32,6 +34,9 @@ bool ItemManager::Serialize() {
 
     Logger::Print(eLoggerType::INFO, "{} >> Serialized items.dat with {} items loaded.", fmt::format(fmt::emphasis::bold | fg(fmt::color::cornsilk), "ItemManager"), this->GetItemsLoaded());
     return true;
+}
+std::vector<uint8_t> ItemManager::GetItemsData() {
+    return m_itemData;
 }
 uint32_t ItemManager::GetItemsDatHash() const {
     return m_itemsDatHash;

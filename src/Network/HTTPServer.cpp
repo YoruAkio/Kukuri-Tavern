@@ -43,7 +43,7 @@ void HTTPServer::ServicePoll() {
     m_pServer->Post("/growtopia/server_data.php", [&](const httplib::Request& request, httplib::Response& response) {
         Logger::Print(INFO, "A request from {} | {}", request.remote_addr, request.path);
 
-        for (const auto& header : request.headers) {
+        /*for (const auto& header : request.headers) {
             Logger::Print(INFO, "Header: {} = {}", header.first, header.second);
         }
 
@@ -51,7 +51,7 @@ void HTTPServer::ServicePoll() {
         Logger::Print(INFO, "Request params:");
         for (const auto& param : request.params) {
             Logger::Print(INFO, "{} = {}", param.first, param.second);
-        }
+        }*/
 
         const std::string version = "4.7"; //4.70
         std::string client_version = request.get_param_value("version");
@@ -82,7 +82,7 @@ void HTTPServer::ServicePoll() {
         }
 
         response.set_content(str, "text/plain");
-        Logger::Print(INFO, "Response sent: \n{}", str);
+        //Logger::Print(INFO, "Response sent: \n{}", str);
     });
 
     m_pServer->Get("/growtopia/cache*", [&](const httplib::Request& request, httplib::Response& response) {
