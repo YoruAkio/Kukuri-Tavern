@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <array>
 #include <atomic>
 #include <deque>
@@ -7,6 +7,9 @@
 #include <Server/Server.hpp>
 #include <Server/ServerQueue.hpp>
 #include <Packet/PacketManager.hpp>
+#include <Packet/VariantFunction.hpp>  // เพิ่ม
+#include <Player/Player.hpp>           // เพิ่ม
+#include <Utils/Wrapper/DialogBuilder.hpp>  // เพิ่ม
 
 class ServerPool : private PacketManager {
 public:
@@ -35,12 +38,14 @@ public:
     ~ServerPool() = default;
 
 private:
+    void SendWorldSelectPackets(Player* pAvatar);
+
     std::unordered_map<uint8_t, std::shared_ptr<Server>> m_servers;
     std::array<std::deque<QueueContext>, QUEUE_MAXVAL> m_workerQueue;
     std::thread m_serviceThread;
 
-    uint16_t serverOffset       { 0 };
-    std::atomic<bool> running   { false };
+    uint16_t serverOffset{ 0 };
+    std::atomic<bool> running{ false };
 };
 
 ServerPool* GetServerPool();

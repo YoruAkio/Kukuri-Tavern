@@ -82,6 +82,12 @@ struct ItemInfo {
     uint32_t m_modsActive = 0;
     std::string m_description = "This is a seed.";
 
+    uint8_t m_unk_int[25] = { 0 };
+    std::string m_unk_str = "";
+    std::string m_xml_file_name = "";
+    uint32_t m_val6 = 0;
+    uint32_t m_val7 = 0;
+
     std::string Cypher(const std::string& input) {
         constexpr std::string_view key{ "PBG892FXX982ABC*" };
         std::string ret(input.size(), 0);
@@ -97,23 +103,35 @@ struct ItemInfo {
     }
 
     std::size_t GetMemoryUsage() const {
-        std::size_t ret{ 8 };
+        std::size_t ret{ 8 }; 
+
         ret += sizeof(uint16_t) + m_name.size();
         ret += sizeof(uint16_t) + m_textureFile.size();
         ret += 34;
+
         ret += sizeof(uint16_t) + m_extraFile.size();
         ret += 12;
+
         ret += sizeof(uint16_t) + m_pet.m_name.size();
         ret += sizeof(uint16_t) + m_pet.m_prefix.size();
         ret += sizeof(uint16_t) + m_pet.m_suffix.size();
         ret += sizeof(uint16_t) + m_pet.m_ability.size();
         ret += 16;
+
         ret += sizeof(uint16_t) + m_extraOptions1.size();
         ret += sizeof(uint16_t) + m_textureFile2.size();
         ret += sizeof(uint16_t) + m_extraOptions2.size();
         ret += 80;
+
         ret += sizeof(uint16_t) + m_punchOptions.size();
         ret += 21;
+
+        // new
+        ret += 25;  // m_unk_int array
+        ret += sizeof(uint16_t) + m_unk_str.size();
+        ret += sizeof(uint16_t) + m_xml_file_name.size();
+        ret += 8;   // for m_val6, m_val7 (uint32_t * 2)
+
         return ret;
     }
     void Pack(BinaryWriter& buffer) {
@@ -175,6 +193,14 @@ struct ItemInfo {
             buffer.Write<uint8_t>(m_bodypart[index]);
         buffer.Write<uint32_t>(m_unknownVal4);
         buffer.Write<uint32_t>(m_unknownVal5);
+
+        for (auto index = 0; index < 25; index++) {
+            buffer.Write<uint8_t>(m_unk_int[index]);
+        }
+        buffer.Write(m_unk_str);
+        buffer.Write(m_xml_file_name);
+        buffer.Write<uint32_t>(m_val6);
+        buffer.Write<uint32_t>(m_val7);
     }
     void Serialize(BinaryReader& br) {
         m_Id = br.Read<uint32_t>();
@@ -233,6 +259,14 @@ struct ItemInfo {
             m_bodypart[index] = br.Read<uint8_t>();
         m_unknownVal4 = br.Read<uint32_t>();
         m_unknownVal5 = br.Read<uint32_t>();
+
+        for (auto index = 0; index < 25; index++) {
+            m_unk_int[index] = br.Read<uint8_t>();
+        }
+        m_unk_str = br.ReadStringU16();
+        m_xml_file_name = br.ReadStringU16();
+        m_val6 = br.Read<uint32_t>();
+        m_val7 = br.Read<uint32_t>();
 
         switch (m_spreadType) {
             case TILESPREAD_DIRECT8:

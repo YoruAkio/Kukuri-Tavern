@@ -49,8 +49,12 @@ void EventPool::AddQueue(const std::string& eventName, EventArguments) {
 }
 
 void EventPool::RegisterEvents() {
+    Logger::Print(DEBUG, "Registering events...");
+    
 	std::thread t(&EventPool::ServicePoll, this);
 	m_serviceThread = std::move(t);
+
+    Logger::Print(DEBUG, "Finished registering events. Total events: {}", m_data.size());
 }
 
 void EventPool::ServicePoll() {

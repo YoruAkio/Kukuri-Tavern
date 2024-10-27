@@ -2,6 +2,8 @@
 #include <ENetWrapper/ENetWrapper.hpp>
 #include <Packet/PacketFactory.hpp>
 #include <Logger/Logger.hpp>
+#include <Packet/VariantFunction.hpp>
+#include <Manager/Item/ItemManager.hpp>
 
 Player::Player(ENetPeer* peer) : Peer(peer),
     PlayerDialog(peer),
@@ -50,6 +52,8 @@ void Player::OnConnect() {
     
     auto packet = SLoginInformationRequestPacket();
     ENetWrapper::SendPacket(this->Get(), packet);
+
+    VarList::OnSuperMainStartAcceptLogon((ENetPeer*)this, GetItemManager()->GetItemsDatHash());
 }
 void Player::OnDisconnect() {
     Logger::Print(INFO, "A player disconnected with IP {}, connectId {} and {} pings.", this->GetIp(), this->GetConnectId(), this->GetPing());

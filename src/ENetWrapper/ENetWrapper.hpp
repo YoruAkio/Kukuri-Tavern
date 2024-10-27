@@ -12,6 +12,7 @@
 #include <Packet/PacketFactory.hpp>
 #include <Packet/VariantList.hpp>
 #include <Player/Player.hpp>
+#include <Logger/Logger.hpp>
 
 namespace ENetWrapper {  
     inline void SendPacket(ENetPeer* peer, ISPacket& data) {
@@ -34,7 +35,33 @@ namespace ENetWrapper {
         if (enet_peer_send(peer, 0, packet) != 0)
             enet_packet_destroy(packet);
     }
-    inline void SendPacket(ENetPeer* peer, eNetMessageType packetType, const void* pData, uintmax_t dataLength) {
+    inline void SendPacket(ENetPeer* peer, eNetMessageType type, const void* data, size_t length) {
+        if (!peer) return;
+
+        ENetPacket* packet = enet_packet_create(nullptr, length + 5, ENET_PACKET_FLAG_RELIABLE);
+        if (!packet) return;
+
+        std::memcpy(packet->data, &type, 4);
+        if (data && length > 0) {
+            std::memcpy(packet->data + 4, data, length);
+        }
+        packet->data[length + 4] = 0;
+
+        if (enet_peer_send(peer, 0, packet) != 0) {
+            enet_packet_destroy(packet);
+            Logger::Print(WARNING, "Failed to send packet type {} (length: {})",
+                static_cast<int>(type),
+                static_cast<int>(length)
+            );
+            return;
+        }
+
+        Logger::Print(DEBUG, "Successfully sent packet - Type: {}, Length: {}",
+            static_cast<int>(type),
+            static_cast<int>(length)
+        );
+    }
+    /*inline void SendPacket(ENetPeer* peer, eNetMessageType packetType, const void* pData, uintmax_t dataLength) {
         if (!peer) 
             return;
 
@@ -50,7 +77,7 @@ namespace ENetWrapper {
 
         if (enet_peer_send(peer, 0, packet) != 0)
             enet_packet_destroy(packet);
-    }
+    }*/
 
     inline void SendPacket(ENetPeer* peer, std::string data) {
         auto vPacket = STextPacket(data);
@@ -60,17 +87,9 @@ namespace ENetWrapper {
     inline void SendVariantList(ENetPeer* peer, VariantList vList) {
         auto vPacket = SVariantPacket(vList);
         ENetWrapper::SendPacket(peer, vPacket);
-        /*auto memoryAlloc = vList.GetMemoryUsage();
-        auto memoryData = vList.Pack();
 
-        TankPacketData* tankPacket = reinterpret_cast<TankPacketData*>(std::malloc(sizeof(TankPacketData) + memoryAlloc));
-        tankPacket->m_type = NET_GAME_PACKET_CALL_FUNCTION;
-        tankPacket->m_flags.bExtended = true;
-        tankPacket->m_netId = vList.netId;
-        tankPacket->m_delay = vList.executionDelay;
-        tankPacket->m_dataLength = static_cast<uint32_t>(memoryAlloc);
-        std::memcpy(reinterpret_cast<uint8_t*>(&tankPacket->m_data), memoryData, memoryAlloc);
-
-        SendPacket(peer, NET_MESSAGE_GAME_PACKET, tankPacket, sizeof(TankPacketData) + tankPacket->m_dataLength); */
+        Logger::Print(DEBUG, "Sent variant list packet with {} variants",
+            static_cast<int>(vList.GetTotalObjects())
+        );
     }
 }

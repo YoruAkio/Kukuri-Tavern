@@ -1,4 +1,4 @@
-#include <Server/ServerPool.hpp>
+﻿#include <Server/ServerPool.hpp>
 #include <magic_enum.hpp>
 #include <ENetWrapper/ENetServer.hpp>
 #include <config.hpp>
@@ -6,6 +6,9 @@
 #include <Event/EventPool.hpp>
 #include <Packet/PacketFactory.hpp>
 #include <Utils/Utils.hpp>
+#include <Packet/VariantFunction.hpp>
+#include <Manager/Item/ItemManager.hpp>
+#include <fmt/format.h>
 
 ServerPool g_serverPool;
 ServerPool* GetServerPool() {
@@ -75,49 +78,132 @@ size_t ServerPool::GetActiveWorlds() const {
 
 void ServerPool::ServicePoll() {
     while (this->IsRunning()) {
-    for (auto& [instanceId, pServer] : this->GetServers()) {
-        while (enet_host_check_events(pServer->GetHost(), pServer->GetEvent())) {
-            auto event = *pServer->GetEvent();
-            auto playerPool = pServer->GetPlayerPool();
-            if (!event.peer || !playerPool)
-                break;
+        for (auto& [instanceId, pServer] : this->GetServers()) {
+            try {
+                while (enet_host_check_events(pServer->GetHost(), pServer->GetEvent())) {
+                    auto event = *pServer->GetEvent();
+                    auto playerPool = pServer->GetPlayerPool();
 
-            switch (event.type) {
-            case ENET_EVENT_TYPE_CONNECT: {
-                if (playerPool->GetPlayer(event.peer->connectID))
-                    break;
-                Player* pAvatar = playerPool->NewPlayer(event.peer);
-                pAvatar->OnConnect();
-            } break;
-            case ENET_EVENT_TYPE_DISCONNECT: {
-                Player* pAvatar = playerPool->GetPlayer(event.peer->connectID);
-                if (!pAvatar)
-                    break;
-                pAvatar->OnDisconnect();
-                playerPool->RemovePlayer(event.peer->connectID);
-            } break;
-            case ENET_EVENT_TYPE_RECEIVE: {
-                Player* pAvatar = playerPool->GetPlayer(event.peer->connectID);
-                if (event.packet->dataLength < sizeof(IPacketType::m_packetType) + 1 || event.packet->dataLength > 0x400 || !pAvatar) {
-                    enet_packet_destroy(event.packet);
-                    break;
+                    if (!event.peer || !playerPool) {
+                        Logger::Print(WARNING, "Invalid peer or player pool");
+                        break;
+                    }
+
+                    switch (event.type) {
+                    case ENET_EVENT_TYPE_CONNECT: {
+                        Logger::Print(INFO, "New connection attempt from {}",
+                            static_cast<uint32_t>(event.peer->address.host));
+
+                        try {
+                            Player* pAvatar = playerPool->NewPlayer(event.peer);
+                            if (pAvatar) {
+                                pAvatar->OnConnect();
+                                Logger::Print(INFO, "Player successfully connected");
+                            }
+                            else {
+                                Logger::Print(WARNING, "Failed to create new player");
+                            }
+                        }
+                        catch (const std::exception& e) {
+                            Logger::Print(EXCEPTION, "Exception in connection handler: {}", e.what());
+                        }
+                    } break;
+
+                    case ENET_EVENT_TYPE_RECEIVE: {
+                        Player* pAvatar = playerPool->GetPlayer(event.peer->connectID);
+                        if (!pAvatar) {
+                            Logger::Print(WARNING, "Received packet from unknown player");
+                            break;
+                        }
+
+                        if (event.packet->dataLength < sizeof(IPacketType::m_packetType) + 1 ||
+                            event.packet->dataLength > 0x400) {
+                            Logger::Print(WARNING, "Invalid packet size: {}", event.packet->dataLength);
+                            enet_packet_destroy(event.packet);
+                            break;
+                        }
+
+                        try {
+                            auto messageType = *(int32_t*)event.packet->data;
+                            Logger::Print(INFO, "Received packet type: {}", messageType);
+
+                            switch (messageType) {
+                            case NET_MESSAGE_GENERIC_TEXT:
+                            case NET_MESSAGE_GAME_MESSAGE: {
+                                auto data = this->DataToString(
+                                    event.packet->data + sizeof(IPacketType::m_packetType),
+                                    event.packet->dataLength - sizeof(IPacketType::m_packetType)
+                                );
+                                Logger::Print(DEBUG, "Got message: {}", data);
+
+                                if (data.find("protocol|") != std::string::npos) {
+                                    Logger::Print(DEBUG, "Received protocol message from guest");
+
+                                    // Send OnSuperMain
+                                    VarList::OnSuperMainStartAcceptLogon(event.peer, GetItemManager()->GetItemsDatHash());
+                                    Logger::Print(DEBUG, "Sent OnSuperMain");
+                                }
+                                else {
+                                    GetEventPool()->AddQueue(
+                                        data.substr(0, data.find('|')),
+                                        pAvatar,
+                                        pServer,
+                                        data,
+                                        TextParse(data),
+                                        nullptr
+                                    );
+                                    Logger::Print(DEBUG, "Processed text message: {}", data);
+                                }
+                            } break;
+                            case NET_MESSAGE_GAME_PACKET: {
+                                Logger::Print(INFO, "Received packet type: Game Packet");
+                                auto* tankPacket = this->DataToTankPacket(
+                                    event.packet->data + sizeof(IPacketType::m_packetType),
+                                    event.packet->dataLength - sizeof(IPacketType::m_packetType)
+                                );
+                                if (tankPacket) {
+                                    Logger::Print(DEBUG, "Processing tank packet type: {}", static_cast<int>(tankPacket->m_type));
+                                }
+                            } break;
+                            default:
+                                Logger::Print(DEBUG, "Unknown message type: {}", messageType);
+                                break;
+                            }
+                        }
+                        catch (const std::exception& e) {
+                            Logger::Print(DEBUG, "Exception in packet handler: {}", e.what());
+                        }
+
+                        if (event.packet) {
+                            enet_packet_destroy(event.packet);
+                        }
+                    } break;
+
+                    case ENET_EVENT_TYPE_DISCONNECT: {
+                        try {
+                            Player* pAvatar = playerPool->GetPlayer(event.peer->connectID);
+                            if (pAvatar) {
+                                pAvatar->OnDisconnect();
+                                playerPool->RemovePlayer(event.peer->connectID);
+                                Logger::Print(INFO, "Player disconnected: {}", event.peer->connectID);
+                            }
+                        }
+                        catch (const std::exception& e) {
+                            Logger::Print(EXCEPTION, "Exception in disconnect handler: {}", e.what());
+                        }
+                    } break;
+
+                    default:
+                        Logger::Print(WARNING, "Unknown event type: {}",
+                            static_cast<int>(event.type));
+                        break;
+                    }
                 }
-                auto messageType = *(int32_t*)event.packet->data;
-                switch (messageType) {
-                case NET_MESSAGE_GENERIC_TEXT:
-                case NET_MESSAGE_GAME_MESSAGE: {
-                    auto data = this->DataToString(event.packet->data + sizeof(IPacketType::m_packetType), event.packet->dataLength - sizeof(IPacketType::m_packetType));
-                    GetEventPool()->AddQueue(data.substr(0, data.find('|')), pAvatar, pServer, data, TextParse(data), nullptr);
-                } break;
-                default:
-                    break;
-                }
-            } break;
-            default:
-                break;
+                enet_host_service(pServer->GetHost(), nullptr, 1);
+            }
+            catch (const std::exception& e) {
+                Logger::Print(EXCEPTION, "Exception in main server loop: {}", e.what());
             }
         }
-        enet_host_service(pServer->GetHost(), nullptr, 1);
-    }
     }
 }
